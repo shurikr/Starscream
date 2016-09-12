@@ -239,18 +239,34 @@ public class SSLSecurity {
     - returns: the public keys from the certifcate chain for the trust
     */
     func publicKeyChain(_ trust: SecTrust) -> [SecKey] {
-        let policy = SecPolicyCreateBasicX509()
-        let keys = (0..<SecTrustGetCertificateCount(trust)).reduce([SecKey]()) { (keys: [SecKey], index: Int) -> [SecKey] in
-            var keys = keys
-            let cert = SecTrustGetCertificateAtIndex(trust, index)
-            if let key = extractPublicKey(cert!, policy: policy) {
-                keys.append(key)
+        var publicKeys: [SecKey] = []
+        
+        for index in 0..<SecTrustGetCertificateCount(trust) {
+            if
+                let certificate = SecTrustGetCertificateAtIndex(trust, index),
+                let publicKey = publicKey(for: certificate)
+            {
+                publicKeys.append(publicKey)
             }
-            
-            return keys
         }
         
-        return keys
+        return publicKeys
+    }
+    
+    
+    
+    func publicKey(for certificate: SecCertificate) -> SecKey? {
+        var publicKey: SecKey?
+        
+        let policy = SecPolicyCreateBasicX509()
+        var trust: SecTrust?
+        let trustCreationStatus = SecTrustCreateWithCertificates(certificate, policy, &trust)
+        
+        if let trust = trust, trustCreationStatus == errSecSuccess {
+            publicKey = SecTrustCopyPublicKey(trust)
+        }
+        
+        return publicKey
     }
     
     
